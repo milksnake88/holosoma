@@ -384,12 +384,13 @@ class RetargetingEvaluator:
             dict: Foot sliding metrics
         """
 
+        # Resolve robot toe links from the joint mapping ([left, right]) so non-G1 robots work
+        toe_links = [self.joints_mapping[name] for name in self.constants.TOE_NAMES]
+
         left_toe_positions = []
         right_toe_positions = []
         for q in q_trajectory:
-            toe_positions = self._get_robot_link_positions(
-                q, ["left_ankle_roll_sphere_5_link", "right_ankle_roll_sphere_5_link"]
-            )
+            toe_positions = self._get_robot_link_positions(q, toe_links)
             left_toe_positions.append(toe_positions[0])
             right_toe_positions.append(toe_positions[1])
 

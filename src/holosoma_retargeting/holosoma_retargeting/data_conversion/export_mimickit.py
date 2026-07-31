@@ -6,6 +6,9 @@ frames 스키마 (prism motion_lib 소비 형식):
 안전장치: 저장 전 MJCF 모델의 관절 선언 순서가 EXPECTED_JOINT_ORDER 와
 일치하는지 이름으로 검증한다 (dof 스크램블 사고 방지).
 
+기본 동작: 앞/뒤 150프레임을 잘라낸다 (--trim-head / --trim-tail, 0=끔).
+LAFAN 등 원본 mocap 이 T포즈로 시작·종료하므로 전환 구간을 학습 데이터에서 제외한다.
+
 Usage:
     # 단일 파일
     python -m holosoma_retargeting.data_conversion.export_mimickit \
@@ -47,6 +50,31 @@ EXPECTED_JOINT_ORDER: dict[str, list[str]] = {
         "r_hip_r", "r_hip_y", "r_hip_p", "r_knee_p", "r_ankle_p", "r_ankle_r",
     ],
 }
+
+
+def trim_qpos(qpos: np.ndarray, trim_head: int, trim_tail: int, min_frames: int = 30) -> np.ndarray:
+    """qpos 앞/뒤 프레임을 잘라낸다 (원본 fps 기준 프레임 수).
+
+    LAFAN 등 mocap 원본은 T포즈로 시작·종료하고 보행 진입까지 ~100프레임의
+    전환 구간이 있다. 이 구간은 로봇 모션으로서 의미가 없고 학습 데이터
+    품질을 떨어뜨리므로 제거한다. 저역통과(filtfilt)의 edge effect 가 전환
+    구간의 큰 전이를 유효 구간으로 번지게 하므로 필터링보다 먼저 적용한다.
+    """
+    if trim_head < 0 or trim_tail < 0:
+        raise ValueError(f"trim_head/trim_tail must be >= 0, got {trim_head}/{trim_tail}")
+    if trim_head == 0 and trim_tail == 0:
+        return qpos
+
+    num_frames = qpos.shape[0]
+    end = num_frames - trim_tail
+    remaining = end - trim_head
+    if remaining < min_frames:
+        raise ValueError(
+            f"trim_head={trim_head} + trim_tail={trim_tail} leaves {remaining} of "
+            f"{num_frames} frames (minimum {min_frames})"
+        )
+    print(f"[export_mimickit] trim: {num_frames} → {remaining} frames (head {trim_head}, tail {trim_tail})")
+    return qpos[trim_head:end]
 
 
 def lowpass_qpos(qpos: np.ndarray, fps: float, cutoff_hz: float) -> np.ndarray:
@@ -188,6 +216,10 @@ class ExportMimickitConfig:
     """모션 반복 모드."""
     fps: float | None = None
     """fps 오버라이드 (기본: npz 의 fps, 없으면 30)."""
+    trim_head: int = 150
+    """앞에서 제거할 프레임 수 (입력 fps 기준). LAFAN 원본은 T포즈로 시작해 보행 진입까지 ~100프레임이 걸린다."""
+    trim_tail: int = 150
+    """뒤에서 제거할 프레임 수 (입력 fps 기준). 원본이 T포즈로 종료되는 구간 제거."""
     output_filter_hz: float = 0.0
     """출력 저역통과 컷오프(Hz, 제로위상). 0=끔. 이미 후처리된 결과면 끄는 게 기본."""
     resample_fps: float = 0.0
@@ -202,6 +234,7 @@ def convert_one(in_path: Path, out_path: Path, cfg: ExportMimickitConfig, robot_
     qpos = np.asarray(data["qpos"], dtype=np.float64)
     fps = float(cfg.fps) if cfg.fps is not None else float(data["fps"]) if "fps" in data.files else 30.0
 
+    qpos = trim_qpos(qpos, cfg.trim_head, cfg.trim_tail)
     if cfg.output_filter_hz > 0:
         qpos = lowpass_qpos(qpos, fps, cfg.output_filter_hz)
     if cfg.resample_fps > 0:

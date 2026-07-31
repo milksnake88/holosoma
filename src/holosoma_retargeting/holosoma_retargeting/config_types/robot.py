@@ -219,7 +219,6 @@ class RobotConfig:
                     "35": 0.05,
                 }
             )
-
         return base
 
     MANUAL_UB = property(_manual_ub, doc="Get manual upper bounds.")
@@ -231,6 +230,12 @@ class RobotConfig:
 
         if self.robot_type == "g1":
             return {"19": 0.2, "20": 0.2}  # waist yaw, waist roll
+
+        if self.robot_type == "alice5":
+            return {"7": 0.3, "8": 0.2, "9": 0.2, "10": 1.0, "11": 1.0,
+                     "23": 0.5, "29": 0.5}
+
+        
         return {}
 
     MANUAL_COST = property(_manual_cost, doc="Get manual cost weights.")

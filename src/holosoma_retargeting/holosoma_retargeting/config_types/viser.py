@@ -16,6 +16,9 @@ class ViserConfig:
     qpos_npz: str = "rt_results/OMOMO_new/box_parallel/sub8_largebox_051_original.npz"
     """Path to .npz file with qpos data."""
 
+    mimickit_pkl: str | None = None
+    """Path to MimicKit .pkl file (export_mimickit.py output). Takes precedence over qpos_npz."""
+
     robot_urdf: str = "models/g1/g1_29dof.urdf"
     """Path to robot URDF file."""
 

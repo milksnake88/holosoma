@@ -27,6 +27,27 @@ def load_npz(npz_path: str):
     return qpos, fps
 
 
+def load_mimickit_pkl(pkl_path: str):
+    """MimicKit pkl → (qpos, fps), i.e. the inverse of export_mimickit.py.
+
+    pkl frames are `[root_pos(3), root_rot expmap(3), dof(D)]` (T, 6+D) while the
+    player consumes qpos `[pos(3), quat wxyz(4), dof(D)]`, so only the
+    expmap(rotvec) → quaternion conversion is needed.
+    """
+    import pickle
+
+    from scipy.spatial.transform import Rotation as sRot
+
+    with open(pkl_path, "rb") as f:
+        data = pickle.load(f)
+    frames = np.asarray(data["frames"], dtype=np.float64)
+    if frames.ndim != 2 or frames.shape[1] < 7:
+        raise ValueError(f"unexpected frames shape {frames.shape} in {pkl_path}")
+    quat_xyzw = sRot.from_rotvec(frames[:, 3:6]).as_quat()
+    qpos = np.concatenate([frames[:, 0:3], quat_xyzw[:, [3, 0, 1, 2]], frames[:, 6:]], axis=1)
+    return qpos, int(round(float(data.get("fps", 30))))
+
+
 def make_player(
     config: ViserConfig,
     qpos: np.ndarray,
@@ -107,7 +128,7 @@ def make_player(
 
 def main(cfg: ViserConfig) -> None:
     """Main function for viser player."""
-    qpos, fps = load_npz(cfg.qpos_npz)
+    qpos, fps = load_mimickit_pkl(cfg.mimickit_pkl) if cfg.mimickit_pkl else load_npz(cfg.qpos_npz)
     make_player(
         config=cfg,
         qpos=qpos,

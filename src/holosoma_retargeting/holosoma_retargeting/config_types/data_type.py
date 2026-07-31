@@ -331,7 +331,7 @@ class FormatConstants(TypedDict, total=False):
 
 DATA_FORMAT_CONSTANTS: dict[str, FormatConstants] = {
     "lafan": {
-        "default_scale_factor": 1.27 / 1.7,
+        "default_human_height": 1.7,
     },
     "mocap": {
         "default_human_height": 1.78,
@@ -420,9 +420,20 @@ class MotionDataConfig:
 
     @property
     def default_scale_factor(self) -> float | None:
-        """Get default scale factor for this data format (None if calculated per subject)."""
+        """Get default scale factor for this data format (None if calculated per subject).
+
+        If the format only defines a default human height, the scale is derived from the
+        robot height in _ROBOT_DEFAULTS (config_types/robot.py) for the selected robot_type.
+        """
         format_constants: FormatConstants = DATA_FORMAT_CONSTANTS.get(self.data_format, {})
-        return format_constants.get("default_scale_factor")
+        scale_factor = format_constants.get("default_scale_factor")
+        if scale_factor is not None:
+            return scale_factor
+
+        human_height = format_constants.get("default_human_height")
+        if human_height is None:
+            return None
+        return self.robot_defaults[self.robot_type]["robot_height"] / human_height
 
     @property
     def default_human_height(self) -> float | None:

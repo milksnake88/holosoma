@@ -148,6 +148,35 @@ MOCAP_DEMO_JOINTS = [
     "RightFootMod",
 ]
 
+# SFU Motion Capture Database (BVH joint order, see mocap.cs.sfu.ca)
+SFU_DEMO_JOINTS = [
+    "Hips",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase",
+    "Spine",
+    "Spine1",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "LeftHandThumb",
+    "L_Wrist_End",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "RightHandThumb",
+    "R_Wrist_End",
+]
+
 SMPLX_DEMO_JOINTS = [
     "Pelvis",
     "L_Hip",
@@ -210,6 +239,25 @@ JOINTS_MAPPINGS = {
         "RightHand": "right_hand_sphere_link",
     },
     ("lafan", "alice5"): {
+        "Hips": "pelvis",
+        "Spine1": "waist_yaw_link",
+        "LeftUpLeg": "left_hip_roll_link",
+        "RightUpLeg": "right_hip_roll_link",
+        "LeftLeg": "left_stl_ankle",
+        "RightLeg": "right_stl_ankle",
+        "LeftArm": "left_shoulder_roll_link",
+        "RightArm": "right_shoulder_roll_link",
+        "LeftForeArm": "left_elbow_pitch_link",
+        "RightForeArm": "right_elbow_pitch_link",
+        "LeftFoot": "left_ankle_roll",
+        "RightFoot": "right_ankle_roll",
+        "LeftToeBase": "left_foot_toe",
+        "RightToeBase": "right_foot_toe",
+        "LeftHand": "left_virtual_wrist_link",
+        "RightHand": "right_virtual_wrist_link",
+    },
+    # SFU uses the same joint names as LAFAN for every mapped joint
+    ("sfu", "alice5"): {
         "Hips": "pelvis",
         "Spine1": "waist_yaw_link",
         "LeftUpLeg": "left_hip_roll_link",
@@ -320,6 +368,7 @@ TOE_NAMES_BY_FORMAT = {
     "smplh": ["L_Toe", "R_Toe"],
     "mocap": ["LeftToeBase", "RightToeBase"],
     "smplx": ["L_Foot", "R_Foot"],
+    "sfu": ["LeftToeBase", "RightToeBase"],
 }
 
 
@@ -336,6 +385,11 @@ DATA_FORMAT_CONSTANTS: dict[str, FormatConstants] = {
     "mocap": {
         "default_human_height": 1.78,
     },
+    # SFU BVH files are in inches, and extract_global_positions.py divides raw BVH units
+    # by 100, so a ~1.6 m subject appears as ~0.62 in the .npy files.
+    "sfu": {
+        "default_human_height": 0.57,
+    },
 }
 
 # Unified registry: Maps format name to demo joints
@@ -346,6 +400,7 @@ DEMO_JOINTS_REGISTRY: dict[str, list[str]] = {
     "smplh": SMPLH_DEMO_JOINTS,
     "mocap": MOCAP_DEMO_JOINTS,
     "smplx": SMPLX_DEMO_JOINTS,
+    "sfu": SFU_DEMO_JOINTS,
 }
 
 # Type alias for data formats - use str to allow dynamic data formats via DEMO_JOINTS_REGISTRY

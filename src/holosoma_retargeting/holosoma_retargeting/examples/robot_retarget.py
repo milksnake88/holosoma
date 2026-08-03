@@ -204,16 +204,26 @@ def load_motion_data(
     logger.info("Loading motion data for task: %s, format: %s", task_name, data_format)
 
     if task_type == "robot_only":
-        if data_format == "lafan":
+        if data_format in ("lafan", "sfu"):
+            # Both are BVH-based: use data_utils/extract_global_positions.py to get the .npy files
             npy_path = data_path / f"{task_name}.npy"
             if not npy_path.exists():
-                raise FileNotFoundError(f"LAFAN data file not found: {npy_path}")
+                raise FileNotFoundError(f"{data_format.upper()} data file not found: {npy_path}")
 
             human_joints = np.load(str(npy_path))
-            human_joints = transform_y_up_to_z_up(human_joints)
-            spine_joint_idx = constants.DEMO_JOINTS.index("Spine1")
-            # LAFAN-specific spine adjustment
-            human_joints[:, spine_joint_idx, -1] -= 0.06
+            if data_format == "lafan":
+                human_joints = transform_y_up_to_z_up(human_joints)
+                spine_joint_idx = constants.DEMO_JOINTS.index("Spine1")
+                # LAFAN-specific spine adjustment
+                human_joints[:, spine_joint_idx, -1] -= 0.06
+            elif data_format == "sfu":
+                # SFU is y-up and right-handed, so rotate (x, y, z) -> (x, -z, y) instead of
+                # transform_y_up_to_z_up(), which mirrors and would swap left/right
+                human_joints = np.stack(
+                    [human_joints[..., 0], -human_joints[..., 2], human_joints[..., 1]], axis=-1
+                )
+                # SFU sequences are captured at 120 fps: downsample to 30 fps
+                human_joints = human_joints[::4]
             smpl_scale = motion_data_config.default_scale_factor or 1.0
         elif data_format == "smplh":  # smplh
             pt_path = data_path / f"{task_name}.pt"
@@ -394,7 +404,7 @@ def _compute_q_init_base(
         q_init_base in MuJoCo order: [0:3] position, [3:7] quaternion, [7:] joints
     """
     if task_type == "robot_only":
-        if data_format == "lafan":
+        if data_format in ("lafan", "sfu"):
             spine_joint_idx = constants.DEMO_JOINTS.index("Spine1")
             human_quat_init = estimate_human_orientation(human_joints, constants.DEMO_JOINTS)
             # MuJoCo order: pos first, then quat

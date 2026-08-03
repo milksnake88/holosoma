@@ -16,6 +16,7 @@ src_root = Path(__file__).resolve().parent.parent
 if str(src_root) not in sys.path:
     sys.path.insert(0, str(src_root))
 from holosoma_retargeting.config_types.viser import ViserConfig  # noqa: E402
+from holosoma_retargeting.data_conversion.clip_motion import add_clip_gui  # noqa: E402
 from holosoma_retargeting.src.viser_utils import create_motion_control_sliders  # noqa: E402
 
 
@@ -104,7 +105,7 @@ def make_player(
             vo.show_visual = bool(show_meshes_cb.value)
 
     # ---------- Use reusable motion control sliders from viser_utils ----------
-    create_motion_control_sliders(
+    controls, _ = create_motion_control_sliders(
         server=server,
         viser_robot=vr,
         robot_base_frame=robot_root,
@@ -117,6 +118,17 @@ def make_player(
         initial_interp_mult=config.visual_fps_multiplier,
         loop=config.loop,
     )
+
+    # ---------- Clip export (start/end 구간만 npz 로 저장) ----------
+    add_clip_gui(
+        server=server,
+        frame_slider=controls[0],
+        qpos=qpos,
+        fps=actual_fps,
+        source=config.mimickit_pkl or config.qpos_npz,
+        out_dir=config.clip_out_dir,
+    )
+
     n_frames = int(qpos.shape[0])
     print(
         f"[viser_player] Loaded {n_frames} frames | robot_dof={robot_dof} | "

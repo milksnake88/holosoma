@@ -25,6 +25,9 @@ class ViserConfig:
     object_urdf: str | None = None
     """Path to object URDF file (optional)."""
 
+    clip_out_dir: str | None = None
+    """Directory for clips saved from the "Clip export" GUI. None → `<source dir>_clips`."""
+
     fps: int = 30
     """Frames per second for playback."""
 

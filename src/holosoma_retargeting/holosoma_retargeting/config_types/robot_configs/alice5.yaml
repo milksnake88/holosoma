@@ -1,11 +1,44 @@
-# Alice5 configuration values consumed by config_types/data_type.py.
+# Alice5 configuration values, consumed by config_types/robot.py and config_types/data_type.py.
 #
-# Every *.yaml in this directory is loaded at import time and merged into
-# JOINTS_MAPPINGS, keyed by (data_format, robot_type). Edit this file instead of
-# data_type.py when tuning which human joint drives which alice5 link.
+# Every *.yaml in this directory is loaded once at import time (see
+# robot.py::_load_robot_yaml_configs). Edit this file instead of the Python modules when
+# tuning alice5 — no code change is needed.
 robot_type: alice5
 
-# human joint name -> alice5 link name, per motion data format.
+# robot.py: _ROBOT_DEFAULTS entry.
+robot_defaults:
+  robot_dof: 23
+  robot_height: 1.65
+  object_name: ground
+
+# robot.py: RobotConfig.FOOT_STICKING_LINKS — links held fixed by the foot-sticking constraint.
+foot_sticking_links:
+  - left_foot_corner_fl
+  - right_foot_corner_fl
+  - left_foot_corner_fr
+  - right_foot_corner_fr
+  - left_foot_corner_bl
+  - right_foot_corner_bl
+  - left_foot_corner_br
+  - right_foot_corner_br
+
+# robot.py: RobotConfig.MANUAL_COST — joint index -> cost weight.
+# Ankles only: penalizes ankle_p jitter and ankle_r walking on the foot edge.
+manual_cost:
+  "22": 0.5
+  "23": 0.5
+  "28": 0.5
+  "29": 0.5
+# Previously tried (kept for reference):
+# "7": 0.3
+# "8": 0.2
+# "9": 0.2
+# "10": 1.0
+# "11": 1.0
+# "23": 0.1
+# "29": 0.1
+
+# data_type.py: JOINTS_MAPPINGS — human joint name -> alice5 link name, per motion data format.
 joints_mapping:
   lafan: &lafan_mapping
     Hips: pelvis

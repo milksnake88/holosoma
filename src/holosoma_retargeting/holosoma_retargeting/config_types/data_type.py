@@ -3,19 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, TypedDict
 
-import yaml
-
 from holosoma_retargeting.config_types.robot import (
+    ROBOT_YAML_CONFIGS,
     RobotDefaults,
     _default_robot_defaults,
     _validate_robot_type,
 )
-
-# Per-robot config values kept in YAML instead of inline literals (e.g. alice5.yaml)
-ROBOT_CONFIG_DIR = Path(__file__).parent / "robot_configs"
 
 # Pre-defined constants for each data format
 LAFAN_DEMO_JOINTS = [
@@ -333,15 +328,13 @@ JOINTS_MAPPINGS = {
 
 
 def _load_yaml_joints_mappings() -> dict[tuple[str, str], dict[str, str]]:
-    """Load (data_format, robot_type) -> joints mapping from ROBOT_CONFIG_DIR/*.yaml.
+    """Read the `joints_mapping` block of every robot_configs/*.yaml (see robot.py).
 
-    Each YAML file describes one robot: a `robot_type` key (defaults to the file stem)
-    and a `joints_mapping` block keyed by data format.
+    Each YAML file describes one robot; its `joints_mapping` is keyed by data format,
+    producing (data_format, robot_type) keys here.
     """
     mappings: dict[tuple[str, str], dict[str, str]] = {}
-    for path in sorted(ROBOT_CONFIG_DIR.glob("*.yaml")):
-        config = yaml.safe_load(path.read_text()) or {}
-        robot_type = config.get("robot_type", path.stem)
+    for robot_type, config in ROBOT_YAML_CONFIGS.items():
         for data_format, mapping in (config.get("joints_mapping") or {}).items():
             # copy: YAML anchors (e.g. sfu reusing lafan) would otherwise share one dict
             mappings[(data_format, robot_type)] = dict(mapping)

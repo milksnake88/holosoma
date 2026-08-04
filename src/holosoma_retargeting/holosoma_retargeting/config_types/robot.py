@@ -3,9 +3,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping, TypedDict
+from pathlib import Path
+from typing import Any, Mapping, TypedDict, cast
 
 import numpy as np
+import yaml
+
+# Robots whose config values live in YAML instead of inline literals (e.g. alice5.yaml).
+# Shared with config_types/data_type.py, which reads the `joints_mapping` block.
+ROBOT_CONFIG_DIR = Path(__file__).parent / "robot_configs"
+
+
+def _load_robot_yaml_configs() -> dict[str, dict[str, Any]]:
+    """Load ROBOT_CONFIG_DIR/*.yaml into robot_type -> parsed config.
+
+    Each file describes one robot via a `robot_type` key (defaults to the file stem).
+    """
+    configs: dict[str, dict[str, Any]] = {}
+    for path in sorted(ROBOT_CONFIG_DIR.glob("*.yaml")):
+        config = yaml.safe_load(path.read_text()) or {}
+        configs[config.get("robot_type", path.stem)] = config
+    return configs
+
+
+ROBOT_YAML_CONFIGS: dict[str, dict[str, Any]] = _load_robot_yaml_configs()
 
 
 # Default values per robot type
@@ -18,8 +39,16 @@ class RobotDefaults(TypedDict):
 _ROBOT_DEFAULTS: dict[str, RobotDefaults] = {
     "g1": {"robot_dof": 29, "robot_height": 1.32, "object_name": "ground"},
     "t1": {"robot_dof": 23, "robot_height": 1.2, "object_name": "ground"},
-    "alice5": {"robot_dof": 23, "robot_height": 1.65, "object_name": "ground"},
 }
+
+# YAML-defined robots (alice5, ...) extend/override the literals above
+_ROBOT_DEFAULTS.update(
+    {
+        robot_type: cast(RobotDefaults, config["robot_defaults"])
+        for robot_type, config in ROBOT_YAML_CONFIGS.items()
+        if "robot_defaults" in config
+    }
+)
 
 
 def _default_robot_defaults() -> dict[str, RobotDefaults]:
@@ -131,6 +160,10 @@ class RobotConfig:
         if self.foot_sticking_links is not None:
             return self.foot_sticking_links
 
+        yaml_links = ROBOT_YAML_CONFIGS.get(self.robot_type, {}).get("foot_sticking_links")
+        if yaml_links is not None:
+            return list(yaml_links)
+
         if self.robot_type == "g1":
             return [
                 "left_ankle_roll_sphere_1_link",
@@ -154,17 +187,6 @@ class RobotConfig:
                 "right_foot_sphere_4_link",
                 "left_foot_sphere_5_link",
                 "right_foot_sphere_5_link",
-            ]
-        if self.robot_type == "alice5":
-            return [
-                "left_foot_corner_fl",
-                "right_foot_corner_fl",
-                "left_foot_corner_fr",
-                "right_foot_corner_fr",
-                "left_foot_corner_bl",
-                "right_foot_corner_bl",
-                "left_foot_corner_br",
-                "right_foot_corner_br",
             ]
         raise ValueError(f"Invalid robot type: {self.robot_type}")
 
@@ -228,16 +250,14 @@ class RobotConfig:
         if self.manual_cost is not None:
             return self.manual_cost
 
+        yaml_cost = ROBOT_YAML_CONFIGS.get(self.robot_type, {}).get("manual_cost")
+        if yaml_cost is not None:
+            # str() so unquoted YAML integer keys still match the string-keyed convention
+            return {str(index): float(cost) for index, cost in yaml_cost.items()}
+
         if self.robot_type == "g1":
             return {"19": 0.2, "20": 0.2}  # waist yaw, waist roll
 
-        if self.robot_type == "alice5":
-            return {"22": 0.5, "23": 0.5, "28": 0.5, "29": 0.5}
-        
-            #return {"7": 0.3, "8": 0.2, "9": 0.2, "10": 1.0, "11": 1.0,
-            #        "23": 0.1, "29": 0.1}
-
-        
         return {}
 
     MANUAL_COST = property(_manual_cost, doc="Get manual cost weights.")

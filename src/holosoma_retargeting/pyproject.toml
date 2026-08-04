@@ -39,6 +39,7 @@ dependencies = [
     "cvxpy",
     "libigl",
     "tyro",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
@@ -62,6 +63,7 @@ source-include = [
     "holosoma_retargeting/**/*.dae",
     "holosoma_retargeting/**/*.mtl",
     "holosoma_retargeting/**/*.xml",
+    "holosoma_retargeting/**/*.yaml",
     "holosoma_retargeting/**/*.urdf",
     "holosoma_retargeting/**/*.jinja",
     "holosoma_retargeting/**/*.npy",

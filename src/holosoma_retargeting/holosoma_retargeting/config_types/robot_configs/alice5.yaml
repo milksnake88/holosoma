@@ -1,0 +1,52 @@
+# Alice5 configuration values consumed by config_types/data_type.py.
+#
+# Every *.yaml in this directory is loaded at import time and merged into
+# JOINTS_MAPPINGS, keyed by (data_format, robot_type). Edit this file instead of
+# data_type.py when tuning which human joint drives which alice5 link.
+robot_type: alice5
+
+# human joint name -> alice5 link name, per motion data format.
+joints_mapping:
+  lafan: &lafan_mapping
+    Hips: pelvis
+    Spine1: waist_yaw_link
+    LeftUpLeg: left_hip_roll_link
+    RightUpLeg: right_hip_roll_link
+    LeftLeg: left_stl_ankle
+    RightLeg: right_stl_ankle
+    LeftArm: left_shoulder_roll_link
+    RightArm: right_shoulder_roll_link
+    LeftForeArm: left_elbow_pitch_link
+    RightForeArm: right_elbow_pitch_link
+    LeftFoot: left_ankle_roll
+    RightFoot: right_ankle_roll
+    LeftToeBase: left_foot_toe
+    RightToeBase: right_foot_toe
+    LeftHand: left_virtual_wrist_link
+    RightHand: right_virtual_wrist_link
+
+  # SFU uses the same joint names as LAFAN for every mapped joint.
+  sfu: *lafan_mapping
+
+  # Same robot links as lafan. Spine2 drives waist_yaw_link: alice5 puts the waist
+  # 0.193 m above the pelvis and, once scaled to robot height, SMPL-X Spine2 is the spine joint
+  # that lands closest to it (Spine1 falls ~8 cm short, Spine3 overshoots ~13 cm). Retargeting
+  # 4 ACCAD walk clips with Spine1/Spine2/Spine3 gave near-identical joint error (7.8-8.1 cm),
+  # but Spine2 had the least toe sliding in every clip.
+  smplx:
+    Pelvis: pelvis
+    Spine2: waist_yaw_link
+    L_Hip: left_hip_roll_link
+    R_Hip: right_hip_roll_link
+    L_Knee: left_stl_ankle
+    R_Knee: right_stl_ankle
+    L_Shoulder: left_shoulder_roll_link
+    R_Shoulder: right_shoulder_roll_link
+    L_Elbow: left_elbow_pitch_link
+    R_Elbow: right_elbow_pitch_link
+    L_Ankle: left_ankle_roll
+    R_Ankle: right_ankle_roll
+    L_Foot: left_foot_toe
+    R_Foot: right_foot_toe
+    L_Wrist: left_virtual_wrist_link
+    R_Wrist: right_virtual_wrist_link

@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, TypedDict
+
+import yaml
 
 from holosoma_retargeting.config_types.robot import (
     RobotDefaults,
     _default_robot_defaults,
     _validate_robot_type,
 )
+
+# Per-robot config values kept in YAML instead of inline literals (e.g. alice5.yaml)
+ROBOT_CONFIG_DIR = Path(__file__).parent / "robot_configs"
 
 # Pre-defined constants for each data format
 LAFAN_DEMO_JOINTS = [
@@ -238,43 +244,6 @@ JOINTS_MAPPINGS = {
         "LeftHand": "left_hand_sphere_link",
         "RightHand": "right_hand_sphere_link",
     },
-    ("lafan", "alice5"): {
-        "Hips": "pelvis",
-        "Spine1": "waist_yaw_link",
-        "LeftUpLeg": "left_hip_roll_link",
-        "RightUpLeg": "right_hip_roll_link",
-        "LeftLeg": "left_stl_ankle",
-        "RightLeg": "right_stl_ankle",
-        "LeftArm": "left_shoulder_roll_link",
-        "RightArm": "right_shoulder_roll_link",
-        "LeftForeArm": "left_elbow_pitch_link",
-        "RightForeArm": "right_elbow_pitch_link",
-        "LeftFoot": "left_ankle_roll",
-        "RightFoot": "right_ankle_roll",
-        "LeftToeBase": "left_foot_toe",
-        "RightToeBase": "right_foot_toe",
-        "LeftHand": "left_virtual_wrist_link",
-        "RightHand": "right_virtual_wrist_link",
-    },
-    # SFU uses the same joint names as LAFAN for every mapped joint
-    ("sfu", "alice5"): {
-        "Hips": "pelvis",
-        "Spine1": "waist_yaw_link",
-        "LeftUpLeg": "left_hip_roll_link",
-        "RightUpLeg": "right_hip_roll_link",
-        "LeftLeg": "left_stl_ankle",
-        "RightLeg": "right_stl_ankle",
-        "LeftArm": "left_shoulder_roll_link",
-        "RightArm": "right_shoulder_roll_link",
-        "LeftForeArm": "left_elbow_pitch_link",
-        "RightForeArm": "right_elbow_pitch_link",
-        "LeftFoot": "left_ankle_roll",
-        "RightFoot": "right_ankle_roll",
-        "LeftToeBase": "left_foot_toe",
-        "RightToeBase": "right_foot_toe",
-        "LeftHand": "left_virtual_wrist_link",
-        "RightHand": "right_virtual_wrist_link",
-    },
     ("smplh", "g1"): {
         "Pelvis": "pelvis_contour_link",
         "L_Hip": "left_hip_pitch_link",
@@ -361,6 +330,26 @@ JOINTS_MAPPINGS = {
         "RightFoot": "Ankle_Cross_Right",
     },
 }
+
+
+def _load_yaml_joints_mappings() -> dict[tuple[str, str], dict[str, str]]:
+    """Load (data_format, robot_type) -> joints mapping from ROBOT_CONFIG_DIR/*.yaml.
+
+    Each YAML file describes one robot: a `robot_type` key (defaults to the file stem)
+    and a `joints_mapping` block keyed by data format.
+    """
+    mappings: dict[tuple[str, str], dict[str, str]] = {}
+    for path in sorted(ROBOT_CONFIG_DIR.glob("*.yaml")):
+        config = yaml.safe_load(path.read_text()) or {}
+        robot_type = config.get("robot_type", path.stem)
+        for data_format, mapping in (config.get("joints_mapping") or {}).items():
+            # copy: YAML anchors (e.g. sfu reusing lafan) would otherwise share one dict
+            mappings[(data_format, robot_type)] = dict(mapping)
+    return mappings
+
+
+# YAML-defined robots (alice5, ...) override/extend the literals above
+JOINTS_MAPPINGS.update(_load_yaml_joints_mappings())
 
 # Data format specific constants
 TOE_NAMES_BY_FORMAT = {

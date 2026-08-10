@@ -24,7 +24,7 @@ class RetargetingConfig:
     """Type of retargeting task."""
 
     # --- top-level run knobs ---
-    robot: str = "g1"
+    robot: str = "alice5"
     """Robot type. Use str to allow dynamic robot types via _ROBOT_DEFAULTS."""
 
     data_format: str | None = None
@@ -45,12 +45,12 @@ class RetargetingConfig:
     """Whether to use augmentation."""
 
     # --- Nested configs ---
-    robot_config: RobotConfig = field(default_factory=lambda: RobotConfig(robot_type="g1"))
+    robot_config: RobotConfig = field(default_factory=lambda: RobotConfig(robot_type="alice5"))
     """Robot configuration (nested - can override robot_urdf_file, robot_dof, etc.
     via --robot-config.robot-urdf-file)."""
 
     motion_data_config: MotionDataConfig = field(
-        default_factory=lambda: MotionDataConfig(data_format="smplh", robot_type="g1")
+        default_factory=lambda: MotionDataConfig(data_format="smplh", robot_type="alice5")
     )
     """Motion data configuration (nested - can override demo_joints, joints_mapping, etc.
     via --motion-data-config.demo-joints).

@@ -22,19 +22,46 @@ foot_sticking_links:
   - left_foot_corner_br
   - right_foot_corner_br
 
+# robot.py: RobotConfig.SELF_COLLISION — retargeter.py::SelfCollisionConfig fields, 1:1.
+# Used only when RetargeterConfig.self_collision leaves `pairs` empty (see
+# interaction_mesh_retargeter.py::_init_self_collision), so a CLI/code-level config still wins.
+self_collision:
+  enable: True
+
+  # 두 링크가 최소한으로 유지해야 할 거리(미터). 만들어진 제약이 지켜내야 할 목표 간격을 말함.
+  tolerance: 0.03 # 종아리가 스치면 0.03 -> 0.04 -> 0.05 정도로 조금씩 올리면서 중단이 나지 않는 상한을 찾는 게 안전
+
+  # Body name pairs. Every body below carries exactly one collision geom, so this is
+  # 11 geom pairs. Wrist pairs are intentionally absent: left/right_virtual_wrist_link are
+  # empty IK frames with no geom, and the elbow geom already spans past the wrist anyway.
+  pairs:
+    # Legs — the calves (stl_ankle) crossing is the case this was added for.
+    - [left_stl_ankle, right_stl_ankle]
+    - [left_stl_thigh, right_stl_thigh]
+    - [left_stl_thigh, right_stl_ankle]
+    - [right_stl_thigh, left_stl_ankle]
+    - [left_ankle_roll, right_ankle_roll]
+    - [left_stl_ankle, right_ankle_roll]
+    - [right_stl_ankle, left_ankle_roll]
+    # Arm swing brushing the pelvis / same-side thigh while walking.
+    - [left_elbow_pitch_link, pelvis]
+    - [right_elbow_pitch_link, pelvis]
+    - [left_elbow_pitch_link, left_stl_thigh]
+    - [right_elbow_pitch_link, right_stl_thigh]
+
 # robot.py: RobotConfig.MANUAL_COST — joint index -> cost weight.
 # Ankles only: penalizes ankle_p jitter and ankle_r walking on the foot edge.
 manual_cost:
-  "22": 0.5
-  "23": 0.5
-  "28": 0.5
-  "29": 0.5
+  "22": 0.5 # l_ankle_p
+  "23": 0.5 # l_ankle_r
+  "28": 0.5 # r_ankle_p
+  "29": 0.5 # r_ankle_r
 # Previously tried (kept for reference):
-# "7": 0.3
-# "8": 0.2
-# "9": 0.2
-# "10": 1.0
-# "11": 1.0
+# "7": 0.3 # waist_p
+# "8": 0.2 # waist_r
+# "9": 0.2 # waist_y
+# "10": 1.0 # head_y
+# "11": 1.0 # head_p
 # "23": 0.1
 # "29": 0.1
 

@@ -9,6 +9,8 @@ from typing import Any, Mapping, TypedDict, cast
 import numpy as np
 import yaml
 
+from holosoma_retargeting.config_types.retargeter import SelfCollisionConfig
+
 # Robots whose config values live in YAML instead of inline literals (e.g. alice5.yaml).
 # Shared with config_types/data_type.py, which reads the `joints_mapping` block.
 ROBOT_CONFIG_DIR = Path(__file__).parent / "robot_configs"
@@ -193,6 +195,24 @@ class RobotConfig:
     FOOT_STICKING_LINKS = property(
         _foot_sticking_links,
         doc="Get foot sticking links - use override if provided, else use robot_type default.",
+    )
+
+    def _self_collision(self) -> SelfCollisionConfig:
+        """Build SelfCollisionConfig from the robot yaml `self_collision` block.
+
+        Returns a disabled default when the robot has no such block. Keys map 1:1 to
+        SelfCollisionConfig fields, so an unknown key raises TypeError at load time.
+        """
+        raw = dict(ROBOT_YAML_CONFIGS.get(self.robot_type, {}).get("self_collision") or {})
+        if raw.get("pairs"):
+            raw["pairs"] = [(str(body_a), str(body_b)) for body_a, body_b in raw["pairs"]]
+        if raw.get("windows"):
+            raw["windows"] = [tuple(window) for window in raw["windows"]]
+        return SelfCollisionConfig(**raw)
+
+    SELF_COLLISION = property(
+        _self_collision,
+        doc="Get self-collision config from the robot yaml (disabled default if absent).",
     )
 
     def _manual_lb(self) -> dict[str, float]:

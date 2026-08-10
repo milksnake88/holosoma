@@ -209,6 +209,10 @@ class InteractionMeshRetargeter:
     def _init_self_collision(self, self_collision: SelfCollisionConfig | None) -> None:
         """Initialize self-collision configuration and precompute geom pairs."""
         sc = self_collision or SelfCollisionConfig()
+        if not sc.pairs:
+            # Nothing specified by the caller: fall back to the robot yaml block
+            # (RobotConfig.SELF_COLLISION, copied into task_constants by create_task_constants).
+            sc = getattr(self.task_constants, "SELF_COLLISION", sc)
         self._self_collision_enabled = sc.enable and len(sc.pairs) > 0
         self._self_collision_tolerance = sc.tolerance
         self._self_collision_windows: list[tuple[int, int]] | None = sc.windows

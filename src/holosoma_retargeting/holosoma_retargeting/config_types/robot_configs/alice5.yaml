@@ -88,6 +88,29 @@ joints_mapping:
   # SFU uses the same joint names as LAFAN for every mapped joint.
   sfu: *lafan_mapping
 
+  # bones. BONES_DEMO_JOINTS (data_type.py) already renames the bones BVH bones to the LAFAN
+  # vocabulary, so only the waist differs from *lafan_mapping: Spine2 (= bones "Chest") sits
+  # 0.195 m above the hips, which scales to 0.188 m at alice5 height (1.65/1.70) and is the
+  # closest match to alice5's 0.193 m pelvis-to-waist offset. The lower spine joints fall short
+  # (Spine1 = bones "Spine2" -> 0.117 m, Spine = bones "Spine1" -> 0.048 m).
+  bones:
+    Hips: pelvis
+    Spine2: waist_yaw_link
+    LeftUpLeg: left_hip_roll_link
+    RightUpLeg: right_hip_roll_link
+    LeftLeg: left_stl_ankle
+    RightLeg: right_stl_ankle
+    LeftArm: left_shoulder_roll_link
+    RightArm: right_shoulder_roll_link
+    LeftForeArm: left_elbow_pitch_link
+    RightForeArm: right_elbow_pitch_link
+    LeftFoot: left_ankle_roll
+    RightFoot: right_ankle_roll
+    LeftToeBase: left_foot_toe
+    RightToeBase: right_foot_toe
+    LeftHand: left_virtual_wrist_link
+    RightHand: right_virtual_wrist_link
+
   # Same robot links as lafan. Spine2 drives waist_yaw_link: alice5 puts the waist
   # 0.193 m above the pelvis and, once scaled to robot height, SMPL-X Spine2 is the spine joint
   # that lands closest to it (Spine1 falls ~8 cm short, Spine3 overshoots ~13 cm). Retargeting

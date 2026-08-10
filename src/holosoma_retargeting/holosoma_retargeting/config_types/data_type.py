@@ -178,6 +178,97 @@ SFU_DEMO_JOINTS = [
     "R_Wrist_End",
 ]
 
+# bones dataset (BVH joint order, 78 joints).
+#
+# Names are the BVH bone names except for the joints the pipeline resolves by name, which are
+# renamed to the LAFAN vocabulary shared by utils.py::estimate_human_orientation and
+# robot_retarget.py. The renames are also anatomically closer to the rest of the codebase:
+#   Spine1 -> Spine, Spine2 -> Spine1, Chest -> Spine2
+#   LeftLeg  -> LeftUpLeg (bones "Leg" is the thigh),  LeftShin  -> LeftLeg
+#   RightLeg -> RightUpLeg,                            RightShin -> RightLeg
+# Order must stay aligned with the .npy joint axis: entries are looked up positionally via
+# demo_joints.index(name).
+BONES_DEMO_JOINTS = [
+    "Root",
+    "Hips",
+    "Spine",
+    "Spine1",
+    "Spine2",
+    "Neck1",
+    "Neck2",
+    "Head",
+    "HeadEnd",
+    "Jaw",
+    "LeftEye",
+    "RightEye",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "LeftHandThumb1",
+    "LeftHandThumb2",
+    "LeftHandThumb3",
+    "LeftHandThumbEnd",
+    "LeftHandIndex1",
+    "LeftHandIndex2",
+    "LeftHandIndex3",
+    "LeftHandIndex4",
+    "LeftHandIndexEnd",
+    "LeftHandMiddle1",
+    "LeftHandMiddle2",
+    "LeftHandMiddle3",
+    "LeftHandMiddle4",
+    "LeftHandMiddleEnd",
+    "LeftHandRing1",
+    "LeftHandRing2",
+    "LeftHandRing3",
+    "LeftHandRing4",
+    "LeftHandRingEnd",
+    "LeftHandPinky1",
+    "LeftHandPinky2",
+    "LeftHandPinky3",
+    "LeftHandPinky4",
+    "LeftHandPinkyEnd",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "RightHandThumb1",
+    "RightHandThumb2",
+    "RightHandThumb3",
+    "RightHandThumbEnd",
+    "RightHandIndex1",
+    "RightHandIndex2",
+    "RightHandIndex3",
+    "RightHandIndex4",
+    "RightHandIndexEnd",
+    "RightHandMiddle1",
+    "RightHandMiddle2",
+    "RightHandMiddle3",
+    "RightHandMiddle4",
+    "RightHandMiddleEnd",
+    "RightHandRing1",
+    "RightHandRing2",
+    "RightHandRing3",
+    "RightHandRing4",
+    "RightHandRingEnd",
+    "RightHandPinky1",
+    "RightHandPinky2",
+    "RightHandPinky3",
+    "RightHandPinky4",
+    "RightHandPinkyEnd",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "LeftToeEnd",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase",
+    "RightToeEnd",
+]
+
 SMPLX_DEMO_JOINTS = [
     "Pelvis",
     "L_Hip",
@@ -351,6 +442,7 @@ TOE_NAMES_BY_FORMAT = {
     "mocap": ["LeftToeBase", "RightToeBase"],
     "smplx": ["L_Foot", "R_Foot"],
     "sfu": ["LeftToeBase", "RightToeBase"],
+    "bones": ["LeftToeBase", "RightToeBase"],
 }
 
 
@@ -372,6 +464,12 @@ DATA_FORMAT_CONSTANTS: dict[str, FormatConstants] = {
     "sfu": {
         "default_human_height": 0.57,
     },
+    # bones BVH files are in centimeters, so the .npy files are already in meters. Measured
+    # HeadEnd-to-toe over all 36 clips in 210707: 1.70 m median (1.69-1.72 across actors
+    # A005/A006/A417), i.e. the same subject height LAFAN assumes.
+    "bones": {
+        "default_human_height": 1.70,
+    },
 }
 
 # Unified registry: Maps format name to demo joints
@@ -383,6 +481,7 @@ DEMO_JOINTS_REGISTRY: dict[str, list[str]] = {
     "mocap": MOCAP_DEMO_JOINTS,
     "smplx": SMPLX_DEMO_JOINTS,
     "sfu": SFU_DEMO_JOINTS,
+    "bones": BONES_DEMO_JOINTS,
 }
 
 # Type alias for data formats - use str to allow dynamic data formats via DEMO_JOINTS_REGISTRY

@@ -18,8 +18,9 @@ nightly_results/
 demo_results/
 demo_results_parallel/
 *.pyc
-demo_data/lafan/
+demo_data/
 converted_res/
 data_utils/lafan1
+data_utils/human_body_prior
 *.sh
 *.bvh

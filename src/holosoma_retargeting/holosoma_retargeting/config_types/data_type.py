@@ -518,6 +518,11 @@ class MotionDataConfig:
     demo_joints: list[str] | None = None
     joints_mapping: dict[str, str] | None = None
 
+    segment_scaling: bool = False
+    """Match each mapped human bone to the corresponding robot link length.
+    The uniform `default_scale_factor` only matches overall height, not proportions.
+    See src/utils.py::rescale_human_segments."""
+
     @property
     def resolved_demo_joints(self) -> list[str]:
         """Get demo joints - use override if provided, else use data_format default."""

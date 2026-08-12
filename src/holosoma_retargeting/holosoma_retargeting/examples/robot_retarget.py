@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Literal
@@ -634,12 +635,10 @@ def main(cfg: RetargetingConfig) -> None:
         cfg.robot_config = RobotConfig(robot_type=robot)
 
     if cfg.motion_data_config.robot_type != robot or cfg.motion_data_config.data_format != data_format:
-        cfg.motion_data_config = MotionDataConfig(data_format=data_format, robot_type=robot)
+        cfg.motion_data_config = replace(cfg.motion_data_config, data_format=data_format, robot_type=robot)
 
     # Task-specific object setup: set default object_dir for climbing if not provided
     if task_type == "climbing" and cfg.task_config.object_dir is None:
-        from dataclasses import replace
-
         cfg.task_config = replace(cfg.task_config, object_dir=data_path / task_name)
 
     constants = create_task_constants(
@@ -675,7 +674,13 @@ def main(cfg: RetargetingConfig) -> None:
 
     # Preprocess motion data
     if task_type == "robot_only":
-        human_joints = preprocess_motion_data(human_joints, retargeter, toe_names, smpl_scale)
+        human_joints = preprocess_motion_data(
+            human_joints,
+            retargeter,
+            toe_names,
+            smpl_scale,
+            segment_scaling=cfg.motion_data_config.segment_scaling,
+        )
     elif task_type in {"object_interaction", "climbing"}:
         human_joints, object_poses, object_moving_frame_idx = preprocess_motion_data(
             human_joints,
@@ -683,6 +688,7 @@ def main(cfg: RetargetingConfig) -> None:
             toe_names,
             scale=smpl_scale,
             object_poses=object_poses,
+            segment_scaling=cfg.motion_data_config.segment_scaling,
         )
 
     # Initialize robot pose

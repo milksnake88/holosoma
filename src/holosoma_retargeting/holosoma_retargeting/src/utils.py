@@ -9,6 +9,7 @@ import pickle
 import re
 from pathlib import Path
 
+import mujoco
 import numpy as np
 import smplx  # type: ignore[import-not-found]
 import torch
@@ -205,6 +206,70 @@ def weighted_surface_sampling_by_face_normal(mesh, sample_count, weight_func, se
     return np.array(sampled_points)
 
 
+def rescale_human_segments(human_joints, retargeter):
+    """Rewrite the mapped human joints so every bone matches the robot's corresponding link length.
+
+    Uniform height scaling (``robot_height / human_height``) only matches the subject's overall
+    height; it cannot fix differing *proportions*. When the robot's torso is longer than the
+    subject's, the interaction-mesh solver has no way to satisfy the shoulder targets except by
+    pitching the waist forward, which parks ``waist_p`` against its joint limit and makes it
+    chatter. Matching bone lengths segment by segment removes that conflict at the source.
+
+    Each mapped human joint is re-seated at
+    ``parent_position + (robot_bone_length / human_bone_length) * human_bone_vector``, so joint
+    angles are preserved exactly -- only lengths change. The skeleton structure is read off the
+    robot instead of being hard-coded per data format: a joint's parent is the nearest ancestor of
+    its robot link (in the MuJoCo body tree) that is also mapped. Joints with no mapped ancestor
+    stay where they are, which keeps global placement and horizontal travel untouched. Unmapped
+    joints are never modified -- the retargeter reads only ``smplh_mapped_joint_indices``.
+
+    How much this helps depends on how much of the skeleton the mapping covers. Mappings rooted at
+    the pelvis (every alice5 format) get the full torso corrected; ``('lafan', 'g1')`` skips the
+    pelvis, so spine/arms/legs are each their own root and only limb lengths change.
+
+    Args:
+        human_joints (np.ndarray): (T, J, 3) human joint positions, already scaled to robot units.
+        retargeter: InteractionMeshRetargeter, for the mapping and the robot model.
+
+    Returns:
+        np.ndarray: (T, J, 3) copy with the mapped joints rescaled.
+    """
+    model = retargeter.robot_model
+    body_id = {human: int(model.body(link).id) for human, link in retargeter.laplacian_match_links.items()}
+    id_to_human = {bid: human for human, bid in body_id.items()}
+    joint_idx = {human: retargeter.demo_joints.index(human) for human in body_id}
+
+    # Robot bone lengths are measured at the zero configuration, where each link sits at its rest
+    # offset. Use a scratch MjData so the retargeter's own state is untouched.
+    rest = mujoco.MjData(model)
+    rest.qpos[:] = 0.0
+    if model.nq >= 7:
+        rest.qpos[3] = 1.0  # identity floating-base quaternion (w, x, y, z)
+    mujoco.mj_forward(model, rest)
+
+    rescaled = human_joints.copy()
+    # MuJoCo stores bodies parent-before-child, so ascending body id already visits every parent
+    # before its children -- exactly the order this rewrite needs.
+    for human in sorted(body_id, key=body_id.get):
+        ancestor = int(model.body_parentid[body_id[human]])
+        # Body 0 is "world"; walking up past it means this joint has no mapped ancestor.
+        while ancestor > 0 and ancestor not in id_to_human:
+            ancestor = int(model.body_parentid[ancestor])
+        if ancestor not in id_to_human:
+            continue  # root of its own subtree: leave it in place
+
+        child_idx, parent_idx = joint_idx[human], joint_idx[id_to_human[ancestor]]
+        bone = human_joints[:, child_idx] - human_joints[:, parent_idx]
+        # Bone lengths are constant up to solver noise, so the median is a robust rest length.
+        human_len = float(np.median(np.linalg.norm(bone, axis=-1)))
+        robot_len = float(np.linalg.norm(rest.xpos[body_id[human]] - rest.xpos[ancestor]))
+        # A degenerate segment (e.g. a virtual link coincident with its parent) is left alone.
+        scale = robot_len / human_len if human_len > 1e-6 and robot_len > 1e-6 else 1.0
+        rescaled[:, child_idx] = rescaled[:, parent_idx] + scale * bone
+
+    return rescaled
+
+
 def preprocess_motion_data(
     human_joints,
     retargeter,
@@ -212,6 +277,7 @@ def preprocess_motion_data(
     scale=0.714,
     mat_height=0.1,
     object_poses=None,
+    segment_scaling=False,
 ):
     """
     Preprocess human joints and object poses for retargeting.
@@ -222,6 +288,9 @@ def preprocess_motion_data(
         retargeter: Retargeting object with smplh_joint2idx attribute.
         scale (float): Scaling factor.
         normalize_height (bool): Whether to normalize human joint heights.
+        segment_scaling (bool): Additionally match each mapped bone to the robot's link length
+            (see rescale_human_segments). Applied after the uniform scale, followed by a second
+            floor normalization so the rescaled feet still land on z = 0.
 
     Returns:
         tuple: (human_joints_scaled, object_poses_scaled, object_moving_frame_idx).
@@ -239,6 +308,12 @@ def preprocess_motion_data(
 
     # Scale human joints
     human_joints = human_joints * scale
+
+    if segment_scaling:
+        human_joints = rescale_human_segments(human_joints, retargeter)
+        # Rescaling moves the feet relative to the root, which is left in place, so re-seat the
+        # motion on the floor. The mat offset was already taken out above.
+        human_joints[:, :, 2] -= human_joints[:, toe_indices, 2].min()
 
     if object_poses is not None:
         object_poses[:, -3:-1] = object_poses[:, -3:-1] * scale

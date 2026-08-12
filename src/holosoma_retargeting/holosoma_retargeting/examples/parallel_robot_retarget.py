@@ -14,6 +14,7 @@ import sys
 # Add src to path for direct execution
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -61,7 +62,7 @@ def find_files(data_dir: Path, data_format: str, object_name: str | None = None)
 
     Args:
         data_dir: Directory to search for files
-        data_format: Data format ("lafan", "smplh", "mocap")
+        data_format: Data format ("lafan", "sfu", "bones", "smplh", "mocap")
         object_name: Optional object name to filter files (for smplh format)
 
     Returns:
@@ -69,8 +70,8 @@ def find_files(data_dir: Path, data_format: str, object_name: str | None = None)
     """
     data_dir = Path(data_dir)
 
-    if data_format in ("lafan", "sfu"):
-        # LAFAN/SFU: .npy files in root directory
+    if data_format in ("lafan", "sfu", "bones"):
+        # BVH-derived formats: .npy files in root directory
         files = [str(p) for p in data_dir.glob("*.npy")]
         return sorted(files)
     if data_format == "smplh":
@@ -172,8 +173,6 @@ def process_single_task(args):
 
     # Task-specific object setup: set default object_dir for climbing if not provided
     if task_type == "climbing" and task_config.object_dir is None:
-        from dataclasses import replace
-
         task_config = replace(task_config, object_dir=Path(file_path))
 
     constants = create_task_constants(robot_config, motion_data_config, task_config, task_type)
@@ -231,10 +230,21 @@ def process_single_task(args):
 
         # Preprocess motion data
         if task_type == "robot_only":
-            human_joints = preprocess_motion_data(human_joints, retargeter, toe_names, smpl_scale)
+            human_joints = preprocess_motion_data(
+                human_joints,
+                retargeter,
+                toe_names,
+                smpl_scale,
+                segment_scaling=motion_data_config.segment_scaling,
+            )
         elif task_type in {"object_interaction", "climbing"}:
             human_joints, object_poses, object_moving_frame_idx = preprocess_motion_data(
-                human_joints, retargeter, toe_names, scale=smpl_scale, object_poses=object_poses
+                human_joints,
+                retargeter,
+                toe_names,
+                scale=smpl_scale,
+                object_poses=object_poses,
+                segment_scaling=motion_data_config.segment_scaling,
             )
 
         # Extract foot sticking sequences
@@ -324,7 +334,7 @@ def main(cfg: ParallelRetargetingConfig) -> None:
         cfg.robot_config = RobotConfig(robot_type=robot)
 
     if cfg.motion_data_config.robot_type != robot or cfg.motion_data_config.data_format != data_format:
-        cfg.motion_data_config = MotionDataConfig(data_format=data_format, robot_type=robot)
+        cfg.motion_data_config = replace(cfg.motion_data_config, data_format=data_format, robot_type=robot)
 
     if task_type == "robot_only":
         files = find_files(data_dir, data_format)
